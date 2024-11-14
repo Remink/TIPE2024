@@ -1,60 +1,88 @@
 ##Implémentation du protocole d'identification de Schnoor sur le groupe Zq (Version décrite sur cette page : https://www.emanuelecivini.com/post/schnorr-id/)
 
+from classes import *
 import sympy as sp ##Bibliothèque pour générer des nombres premiers aléatoires
 from random import randint
+
 
 def generer_premier(inf,sup):
     return sp.randprime(inf,sup)
 
 def generer_cle(q, g):
     s = randint(2,q-1)
-    cle = pow(g,s,q) ## cle = g**s modulo q
-    return (s,cle)
+    gs = pow(g,s,q) ## cle = g**s modulo q
+    return (s,gs)
 
 
-def engagement(q, g):
-    (a,r) = generer_cle(q,g)
-    return (a,r)
+def engagement(alice,bob):
+    (a,ga) = generer_cle(alice.q,alice.g)
+    alice.a=a
+    alice.envoyer(bob,"ga",ga)
 
-def defi(q):
-    b= randint(2,q-1)
+def defi(alice,bob):
+    b= randint(2,bob.q-1)
+    bob.b=b
+    bob.envoyer(alice,"b",b)
     return b
 
-def reponse(q,a,b,s):
-    c = (a + b*s)
-    return c
+def reponse(alice,bob):
+    s = alice.certificats[bob.id][0]
+    c = (alice.a + alice.b*s)
+    alice.envoyer(bob,"c",c)
 
-def verification(q,g,r,b,c,cle):
+def verification(bob):
 
-    verif = pow(g,c,q)
-    t=(r*pow(cle,b,q))%q
-    return t==verif ## t = r*cle^b = g^a*g^bs = g^(a+bs) = g^c
-
-
-
-def protocole(q,g): ## q est un nombre premier, q est un entier entre 2 et q-1, tout deux sont connu des deux participants
-    (s,cle)= generer_cle(q,g)
-
-    (a,r) = engagement(q,g)
-
-    b = defi(q)
-    c=reponse(q,a,b,s)
-
-    test = verification(q,g,r,b,c,cle)
-    print(test)
+    gc = pow(bob.g,bob.c,bob.q)
+    t=(bob.ga*pow(bob.gs,bob.b,bob.q))%bob.q
+    return t==gc ## t = r*cle^b = g^a*g^bs = g^(a+bs) = g^c
 
 
 
 
+def protocole_authentification_schnoor(alice,bob):
 
+    for i in range(bob.nb_repetitions):
+
+
+        engagement(alice,bob)
+
+        defi(alice,bob)
+        reponse(alice,bob)
+
+        if(not(verification(bob))):
+            print(i)
+            return False
+        
+    return True
+
+
+def authentification(alice,bob):
+    alice.envoyer(bob,"gs",alice.certificats[bob.id][1]) ##L'utilisateur envoie sa clé publique
+
+    bob.envoyer(alice,"q",bob.q)
+    bob.envoyer(alice,"g",bob.g)
+
+    reussite = protocole_authentification_schnoor(alice,bob)
+    print(reussite)
+
+    pass
+
+
+inf = 2**(k-1)
+sup = 2*inf -1
 def main(k):
-
-    inf = 2**(k-1)
-    sup = 2*inf -1
+    alice = Utilisateur()
     q = generer_premier(inf,sup)
     g = randint(2,q-1)
+    id = 0
+    nb_repetitions = 1000
 
-    protocole(q,g)
+    (s,gs) = generer_cle(q,g)
+    alice.certificats[id]=(s,gs)
+
+    bob = Proprietaire(g,q, id, nb_repetitions)
+
+    authentification(alice,bob)
 
 k = 256 ## Nombre de bits utilisés pour la clé
 main(k)
