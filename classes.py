@@ -5,7 +5,7 @@ class Utilisateur:
     def __init__(self):
 
         #Variables permanentes
-        self.certificats = dict()
+        self.cle = dict()
 
 
         #Variables liée à une authentification
